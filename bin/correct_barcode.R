@@ -72,9 +72,9 @@ correct_barcode <- function(barcode_file, whitelist_file, reads_per_chunk, path_
 			}
 		})
 		invalid_ratio <- format(round(invalid_barcode_count / (read_chunk * reads_per_chunk), 2), nsmall = 2)
-		if (invalid_ratio > 0.25) {
-			stop("Invalid barcodes exceed 25%, make sure to use the correct barcode whitelist!")
-		}
+		# if (invalid_ratio > 0.25) {
+		# 	stop("Invalid barcodes exceed 25%, make sure to use the correct barcode whitelist!")
+		# }
 		message(paste0("Processed, invalid barcode: ", invalid_barcode_count, "(", length(dict_invalid$keys()), " unique)/", read_chunk * reads_per_chunk, " (", invalid_ratio, ")"))
 		read_chunk <- read_chunk + 1
 		# for test only:

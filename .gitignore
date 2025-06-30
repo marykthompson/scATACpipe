@@ -1,7 +1,8 @@
 .nextflow*
-work/
+work*/
 data/
 results/
+samplesheets/
 results_*/
 .DS_Store
 testing/
@@ -9,3 +10,8 @@ testing*
 *.pyc
 .nextflow.log*
 .github/
+assets/whitelist_barcodes_rc/
+__*/
+logfiles/
+test_data1/
+nextflow.config.active

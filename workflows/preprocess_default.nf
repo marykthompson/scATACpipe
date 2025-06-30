@@ -40,6 +40,7 @@ include { CORRECT_BARCODE_PHENIQS } from '../modules/local/correct_barcode_pheni
 include { FASTQC                } from '../modules/local/fastqc'                  addParams( options: modules['fastqc'] )
 include { ADD_BARCODE_TO_READS       } from '../modules/local/add_barcode_to_reads'
 include { ADD_BARCODE_TO_READ_CHUNKS } from '../modules/local/add_barcode_to_read_chunks'
+include { ADD_BARCODE_TO_READS_DUMMY } from '../modules/local/add_barcode_to_reads_dummy'
 include { CUTADAPT         } from '../modules/local/cutadapt'    addParams( options: modules['cutadapt'] )
 include { DOWNLOAD_FROM_UCSC } from '../modules/local/download_from_ucsc'    addParams( options: modules['download_from_ucsc'] )
 include { DOWNLOAD_FROM_ENSEMBL } from '../modules/local/download_from_ensembl'    addParams( options: modules['download_from_ensembl'] )
@@ -89,6 +90,10 @@ workflow PREPROCESS_DEFAULT {
     FASTQC (reads)
 
     // Module: add barcode to reads depending on split_fastq or not
+    if (!params.add_barcodes_to_reads) {
+      // create channel here which is similar to ADD_BARCODE_TO_READS
+      ADD_BARCODE_TO_READS_DUMMY (reads, sample_count)
+    } else {
     if (!params.split_fastq) {
       ADD_BARCODE_TO_READS (reads, sample_count)
     } else {
@@ -103,12 +108,17 @@ workflow PREPROCESS_DEFAULT {
       // Module: add barcode to read chunks
       ADD_BARCODE_TO_READ_CHUNKS (MATCH_CHUNK.out.chunk)
     }
+    }
 
     // Module: trim off adapter
+    if (!params.add_barcodes_to_reads) {
+      CUTADAPT (ADD_BARCODE_TO_READS_DUMMY.out.reads_0, params.read1_adapter, params.read2_adapter)
+    } else {
     if (!params.split_fastq) {
       CUTADAPT (ADD_BARCODE_TO_READS.out.reads_0, params.read1_adapter, params.read2_adapter)
     } else {
       CUTADAPT (ADD_BARCODE_TO_READ_CHUNKS.out.reads_0, params.read1_adapter, params.read2_adapter)
+    }
     }
 
     // Module: mapping with bwa
@@ -240,7 +250,16 @@ workflow PREPROCESS_DEFAULT {
     // FILTER_CELL (sample_name_bam_fragment_valid_barcodes, "CB")
 
     // Module: run Qualimap on the final filtered, deduplicated, combined, and sorted bam file.
-    QUALIMAP (DEDUP_BAM2.out.sample_name_bam)
+    if (!params.barcode_correction) {
+      // Module: get fragment file
+      QUALIMAP (DEDUP_BAM.out.sample_name_bam)
+      bam_sample_names = COMBINE_BAM.out.sample_name
+      bam_result_files = COMBINE_BAM.out.bam
+    } else {
+      QUALIMAP (DEDUP_BAM2.out.sample_name_bam)
+      bam_sample_names = COMBINE_BAM2.out.sample_name
+      bam_result_files = COMBINE_BAM2.out.bam
+    }
 
     // Collect all output results for MultiQC report:
     res_files = Channel.empty()
@@ -297,8 +316,8 @@ workflow PREPROCESS_DEFAULT {
     res_files // out[0]: res folders for MultiQC report
     GET_FRAGMENTS.out.fragments // out[1]: for split bed
     GET_FRAGMENTS.out.sample_name_fragment // out[2]: fragment ch for ArchR
-    COMBINE_BAM2.out.sample_name // out[3]: for split bam
-    COMBINE_BAM2.out.bam // out[4]: for split bam
+    bam_sample_names // out[3]: for split bam
+    bam_result_files // out[4]: for split bam
     // FILTER_CELL.out.filtered_fragment     // out[1]: for split bed
     // FILTER_CELL.out.sample_name_filtered_fragment  // out[2]: fragment ch for ArchR
     // FILTER_CELL.out.sample_name           // out[3]: for split bam
